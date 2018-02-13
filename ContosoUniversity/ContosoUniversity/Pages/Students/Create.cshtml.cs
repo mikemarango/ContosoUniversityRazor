@@ -34,10 +34,17 @@ namespace ContosoUniversity.Pages.Students
                 return Page();
             }
 
-            _context.Student.Add(Student);
-            await _context.SaveChangesAsync();
+            var student = new Student();
 
-            return RedirectToPage("./Index");
+            if (await TryUpdateModelAsync(student,
+                "student", s => s.FirstMidName, s => s.LastName, s => s.EnrollmentDate))
+            {
+                _context.Student.Add(student);
+                await _context.SaveChangesAsync();
+                return RedirectToPage("./Index");
+            }
+
+            return null;
         }
     }
 }
