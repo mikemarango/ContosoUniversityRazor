@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
 using ContosoUniversity.Models;
+using ContosoUniversity.Models.SchoolViewModels;
 
 namespace ContosoUniversity.Pages.Courses
 {
@@ -20,11 +21,21 @@ namespace ContosoUniversity.Pages.Courses
         }
 
         public IList<Course> Course { get;set; }
+        //public IList<CourseViewModel> CourseVM { get; set; }
 
         public async Task OnGetAsync()
         {
             Course = await _context.Course
                 .Include(c => c.Department).ToListAsync();
+
+            //CourseVM = await _context.Course.Select
+            //    (c => new CourseViewModel
+            //    {
+            //        CourseID = c.CourseID,
+            //        Title = c.Title,
+            //        Credits = c.Credits,
+            //        DepartmentName = c.Department.Name
+            //    }).ToListAsync();
         }
     }
 }
