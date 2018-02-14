@@ -10,7 +10,7 @@ using ContosoUniversity.Models;
 
 namespace ContosoUniversity.Pages.Courses
 {
-    public class CreateModel : PageModel
+    public class CreateModel : DepartmentPageModel
     {
         private readonly SchoolContext _context;
 
@@ -21,7 +21,7 @@ namespace ContosoUniversity.Pages.Courses
 
         public IActionResult OnGet()
         {
-        ViewData["DepartmentID"] = new SelectList(_context.Department, "DepartmentID", "DepartmentID");
+            PopulateDepartmentList(_context);
             return Page();
         }
 
@@ -35,10 +35,17 @@ namespace ContosoUniversity.Pages.Courses
                 return Page();
             }
 
-            _context.Course.Add(Course);
-            await _context.SaveChangesAsync();
+            if (await TryUpdateModelAsync(Course, "course", 
+                c => c.CourseID, c => c.DepartmentID, c => c.Title, c => c.Credits))
+            {
+                _context.Course.Add(Course);
+                await _context.SaveChangesAsync();
+                return RedirectToPage("./Index");
+            }
 
-            return RedirectToPage("./Index");
+            // Select DepartmentID if TryUpdateModelAsync fails;
+            PopulateDepartmentList(_context, Course.DepartmentID);
+            return Page();
         }
     }
 }
