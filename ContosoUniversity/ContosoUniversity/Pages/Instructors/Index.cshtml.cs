@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
 using ContosoUniversity.Models;
+using ContosoUniversity.Models.SchoolViewModels;
 
 namespace ContosoUniversity.Pages.Instructors
 {
@@ -19,11 +20,19 @@ namespace ContosoUniversity.Pages.Instructors
             _context = context;
         }
 
-        public IList<Instructor> Instructor { get;set; }
+        public InstructorIndexViewModel InstructorVM { get; set; } = new InstructorIndexViewModel();
+        public int InstructorID { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? id)
         {
-            Instructor = await _context.Instructor.ToListAsync();
+            InstructorVM.Instructors = await _context.Instructor
+                .Include(i => i.OfficeAssignment)
+                .Include(i => i.CourseAssignments)
+                .ThenInclude(i => i.Course).AsNoTracking()
+                .OrderBy(i => i.LastName)
+                .ToListAsync();
+
+            if (id != null) InstructorID = id.Value;
         }
     }
 }
