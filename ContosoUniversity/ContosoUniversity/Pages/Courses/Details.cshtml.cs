@@ -28,8 +28,9 @@ namespace ContosoUniversity.Pages.Courses
                 return NotFound();
             }
 
-            Course = await _context.Course
-                .Include(c => c.Department).SingleOrDefaultAsync(m => m.CourseID == id);
+            Course = await _context.Course.AsNoTracking()
+                .Include(c => c.Department)
+                .FirstOrDefaultAsync(m => m.CourseID == id);
 
             if (Course == null)
             {
