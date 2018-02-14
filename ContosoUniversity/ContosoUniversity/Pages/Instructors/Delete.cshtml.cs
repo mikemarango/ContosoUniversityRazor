@@ -12,9 +12,9 @@ namespace ContosoUniversity.Pages.Instructors
 {
     public class DeleteModel : PageModel
     {
-        private readonly ContosoUniversity.Data.SchoolContext _context;
+        private readonly SchoolContext _context;
 
-        public DeleteModel(ContosoUniversity.Data.SchoolContext context)
+        public DeleteModel(SchoolContext context)
         {
             _context = context;
         }
@@ -24,35 +24,29 @@ namespace ContosoUniversity.Pages.Instructors
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             Instructor = await _context.Instructor.SingleOrDefaultAsync(m => m.ID == id);
 
-            if (Instructor == null)
-            {
-                return NotFound();
-            }
+            if (Instructor == null) return NotFound();
+
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            Instructor instructor = await _context.Instructor
+                .Include(i => i.CourseAssignments)
+                .SingleAsync(i => i.ID == id);
 
-            Instructor = await _context.Instructor.FindAsync(id);
+            var departments = await _context.Department
+                .Where(d => d.InstructorID == id)
+                .ToListAsync();
 
-            if (Instructor != null)
-            {
-                _context.Instructor.Remove(Instructor);
-                await _context.SaveChangesAsync();
-            }
+            departments.ForEach(d => d.InstructorID = null);
+            _context.Instructor.Remove(instructor);
 
+            await _context.SaveChangesAsync();
             return RedirectToPage("./Index");
         }
     }

@@ -11,7 +11,7 @@ using ContosoUniversity.Models;
 
 namespace ContosoUniversity.Pages.Instructors
 {
-    public class EditModel : PageModel
+    public class EditModel : InstructorCoursePageModel
     {
         private readonly SchoolContext _context;
 
@@ -25,32 +25,30 @@ namespace ContosoUniversity.Pages.Instructors
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             Instructor = await _context.Instructor
                 .Include(i => i.OfficeAssignment)
+                .Include(i => i.CourseAssignments)
+                    .ThenInclude(i => i.Course)
                 .AsNoTracking()
-                .SingleOrDefaultAsync(m => m.ID == id);
+                .FirstOrDefaultAsync(m => m.ID == id);
 
-            if (Instructor == null)
-            {
-                return NotFound();
-            }
+            if (Instructor == null) return NotFound();
+
+            PopulateAssignableCourses(_context, Instructor);
+
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync(int? id)
+        public async Task<IActionResult> OnPostAsync(int? id, string[] selectedCourses)
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
+            if (!ModelState.IsValid) return Page();
 
             Instructor = await _context.Instructor
                 .Include(i => i.OfficeAssignment)
+                .Include(i => i.CourseAssignments)
+                    .ThenInclude(i => i.Course)
                 .FirstOrDefaultAsync(i => i.ID == id);
 
             if (await TryUpdateModelAsync(Instructor, "Instructor",
@@ -61,15 +59,15 @@ namespace ContosoUniversity.Pages.Instructors
                 {
                     Instructor.OfficeAssignment = null;
                 }
+                UpdateInstructorCourses(_context, selectedCourses, Instructor);
                 await _context.SaveChangesAsync();
+                return RedirectToPage("./Index");
             }
 
-            return RedirectToPage("./Index");
-        }
+            UpdateInstructorCourses(_context, selectedCourses, Instructor);
+            PopulateAssignableCourses(_context, Instructor);
 
-        private bool InstructorExists(int id)
-        {
-            return _context.Instructor.Any(e => e.ID == id);
+            return Page();
         }
     }
 }

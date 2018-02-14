@@ -20,24 +20,27 @@ namespace ContosoUniversity.Pages.Instructors
             _context = context;
         }
 
-        public InstructorIndexViewModel InstructorVM { get; set; } = new InstructorIndexViewModel();
+        public InstructorIndexViewModel InstructorVM { get; set; }
         public int InstructorID { get; set; }
         public int CourseID { get; set; }
 
         public async Task OnGetAsync(int? id, int? courseID)
         {
-            InstructorVM.Instructors = await _context.Instructor
+            InstructorVM = new InstructorIndexViewModel
+            {
+                Instructors = await _context.Instructor
                 .Include(i => i.OfficeAssignment)
                 .Include(i => i.CourseAssignments)
                     .ThenInclude(ca => ca.Course)
                         .ThenInclude(c => c.Department)
-                .Include(i => i.CourseAssignments)
-                    .ThenInclude(c => c.Course)
-                        .ThenInclude(i => i.Enrollments)
-                            .ThenInclude(i => i.Student)
-                .AsNoTracking()
+                //.Include(i => i.CourseAssignments)
+                //    .ThenInclude(c => c.Course)
+                //        .ThenInclude(i => i.Enrollments)
+                //            .ThenInclude(i => i.Student)
+                //.AsNoTracking()
                 .OrderBy(i => i.LastName)
-                .ToListAsync();
+                .ToListAsync()
+            };
 
             if (id != null)
             {

@@ -10,7 +10,7 @@ using ContosoUniversity.Models;
 
 namespace ContosoUniversity.Pages.Instructors
 {
-    public class CreateModel : PageModel
+    public class CreateModel : InstructorCoursePageModel
     {
         private readonly SchoolContext _context;
 
@@ -19,25 +19,48 @@ namespace ContosoUniversity.Pages.Instructors
             _context = context;
         }
 
-        public IActionResult OnGet()
+        [BindProperty]
+        public Instructor Instructor { get; set; } = new Instructor();
+
+        public async Task<IActionResult> OnGetAsync()
         {
+            Instructor.CourseAssignments = new List<CourseAssignment>();
+            await PopulateAssignableCourses(_context, Instructor);
             return Page();
         }
 
-        [BindProperty]
-        public Instructor Instructor { get; set; }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(string[] selectedCourses)
         {
             if (!ModelState.IsValid)
             {
                 return Page();
             }
 
-            _context.Instructor.Add(Instructor);
-            await _context.SaveChangesAsync();
+            if (selectedCourses != null)
+            {
+                Instructor.CourseAssignments = new List<CourseAssignment>();
+                foreach (var course in selectedCourses)
+                {
+                    var courseAssignment = new CourseAssignment
+                    {
+                        CourseID = int.Parse(course)
+                    };
+                    Instructor.CourseAssignments.Add(courseAssignment);
+                }
+            }
 
-            return RedirectToPage("./Index");
+            if (await TryUpdateModelAsync(Instructor, "instructor", 
+                i => i.FirstMidName, i => i.LastName,
+                i => i.HireDate, i => i.OfficeAssignment))
+            {
+                _context.Instructor.Add(Instructor);
+                await _context.SaveChangesAsync();
+                return RedirectToPage("./Index");
+            }
+
+            await PopulateAssignableCourses(_context, Instructor);
+            return Page();
         }
     }
 }
