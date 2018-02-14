@@ -22,17 +22,33 @@ namespace ContosoUniversity.Pages.Instructors
 
         public InstructorIndexViewModel InstructorVM { get; set; } = new InstructorIndexViewModel();
         public int InstructorID { get; set; }
+        public int CourseID { get; set; }
 
-        public async Task OnGetAsync(int? id)
+        public async Task OnGetAsync(int? id, int? courseID)
         {
             InstructorVM.Instructors = await _context.Instructor
                 .Include(i => i.OfficeAssignment)
                 .Include(i => i.CourseAssignments)
-                .ThenInclude(i => i.Course).AsNoTracking()
+                    .ThenInclude(ca => ca.Course)
+                        .ThenInclude(c => c.Department).AsNoTracking()
                 .OrderBy(i => i.LastName)
                 .ToListAsync();
 
-            if (id != null) InstructorID = id.Value;
+            if (id != null)
+            {
+                InstructorID = id.Value;
+                var instructor = InstructorVM.Instructors.Where(
+                    i => i.ID == id.Value).Single();
+                InstructorVM.Courses = instructor.CourseAssignments.Select(
+                    s => s.Course);
+            }
+
+            if (courseID != null)
+            {
+                CourseID = courseID.Value;
+                InstructorVM.Enrollments = InstructorVM.Courses.Where(
+                    c => c.CourseID == courseID).Single().Enrollments;
+            }
         }
     }
 }

@@ -46,7 +46,7 @@
                     }
                 </td>
                 <td>
-                    @{ 
+                    @{
                         foreach (var course in item.CourseAssignments)
                         {
                             @course.Course.CourseID @:  @course.Course.Title <br />
@@ -63,3 +63,40 @@
         }
     </tbody>
 </table>
+@if (Model.InstructorVM.Courses != null)
+{
+    <h3>Courses Taught by Selected Instructor</h3>
+    <table class="table">
+        <tr>
+            <th></th>
+            <th>Number</th>
+            <th>Title</th>
+            <th>Department</th>
+        </tr>
+
+        @foreach (var item in Model.InstructorVM.Courses)
+        {
+            string selectedRow = "";
+            if (item.CourseID == Model.CourseID)
+            {
+                selectedRow = "success";
+            }
+            <tr class="@selectedRow">
+                <td>
+                    @Html.ActionLink("Select", "OnGetAsync",
+                                       new { courseID = item.CourseID })
+                </td>
+                <td>
+                    @item.CourseID
+                </td>
+                <td>
+                    @item.Title
+                </td>
+                <td>
+                    @item.Department.Name
+                </td>
+            </tr>
+        }
+
+    </table>
+}
