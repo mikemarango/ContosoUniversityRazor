@@ -22,56 +22,114 @@ namespace ContosoUniversity.Pages.Departments
 
         [BindProperty]
         public Department Department { get; set; }
+        public SelectList Instructors { get; set; }
 
-        public async Task<IActionResult> OnGetAsync(int? id)
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             Department = await _context.Department
-                .Include(d => d.Administrator).SingleOrDefaultAsync(m => m.DepartmentID == id);
+                .Include(d => d.Administrator)
+                .AsNoTracking()
+                .SingleOrDefaultAsync(m => m.DepartmentID == id);
 
-            if (Department == null)
-            {
-                return NotFound();
-            }
-           ViewData["InstructorID"] = new SelectList(_context.Instructor, "ID", "FirstMidName");
+            if (Department == null) return NotFound();
+
+            Instructors = new SelectList(_context.Instructor, "ID", "FirstMidName");
+
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(int id)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid) return Page();
+
+            var department = await _context.Department
+                .Include(i => i.Administrator)
+                .FirstOrDefaultAsync(d => d.DepartmentID == id);
+
+            if (department == null) await HandleDeletedDepartmentAsync();
+
+            // Update the RowVersion to the value when this entity was
+            // fetched. If the entity has been updated after it was
+            // fetched, RowVersion won't match the DB RowVersion and
+            // a DbUpdateConcurrencyException is thrown.
+            // A second postback will make them match, unless a new
+            // concurrency issue happens.
+            _context.Entry(department).Property("RowVersion")
+                .OriginalValue = Department.RowVersion;
+
+            if (await TryUpdateModelAsync(department, "Department",
+                d => d.Name, d => d.StartDate, d => d.Budget, d => d.InstructorID))
             {
-                return Page();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    return RedirectToPage("./Index");
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    var exception = ex.Entries.Single();
+                    var clientValues = (Department)exception.Entity;
+                    var databaseEntry = exception.GetDatabaseValues();
+
+                    if (databaseEntry == null)
+                    {
+                        ModelState.AddModelError(string.Empty, $"Unable to save. The department was deleted by another user.");
+                        return Page();
+                    }
+
+                    var dbValues = (Department)databaseEntry.ToObject();
+                    await SetDbErrorMessageAsync(dbValues, clientValues, _context);
+
+                    // Save the current RowVersion so the next postback
+                    // matches unless a new concurrency issue happens.
+                    Department.RowVersion = (byte[])dbValues.RowVersion;
+                    // Must clear the model error for the next postback.
+                    ModelState.Remove("Department.RowVersion");
+                }
             }
 
-            _context.Attach(Department).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!DepartmentExists(Department.DepartmentID))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            Instructors = new SelectList(_context.Instructor,
+                "ID", "FullName", department.InstructorID);
 
             return RedirectToPage("./Index");
         }
 
-        private bool DepartmentExists(int id)
+        private async Task<IActionResult> HandleDeletedDepartmentAsync()
         {
-            return _context.Department.Any(e => e.DepartmentID == id);
+            ModelState.AddModelError(string.Empty,
+                "Unable to save. The department was deleted by another user.");
+
+            Instructors = new SelectList(_context.Instructor, "ID", "FullName", Department.InstructorID);
+
+            await Task.CompletedTask;
+
+            return Page();
         }
+
+        private async Task SetDbErrorMessageAsync(Department dbValues, Department clientValues, SchoolContext context)
+        {
+            if (dbValues.Name != clientValues.Name)
+                ModelState.AddModelError("Department.Name", $"Current value: {dbValues.Name}");
+
+            if (dbValues.Budget != clientValues.Budget)
+                ModelState.AddModelError("Department.Budget", $"Current value: {dbValues.Budget}");
+
+            if (dbValues.StartDate != clientValues.StartDate)
+                ModelState.AddModelError("Department.StartDate", $"Current value: {dbValues.StartDate}");
+
+            if (dbValues.InstructorID != clientValues.InstructorID)
+            {
+                var instructor = await _context
+                    .Instructor.FindAsync(dbValues.InstructorID);
+                ModelState.AddModelError("Department.InstructorID", $"Current value: {instructor?.FullName}");
+            }
+
+            ModelState.AddModelError(string.Empty, 
+                "The record edition was unsuccessfull since someone else modified it just before you did. " +
+                "If you need to edit please click on save again.");
+        }
+
     }
 }
